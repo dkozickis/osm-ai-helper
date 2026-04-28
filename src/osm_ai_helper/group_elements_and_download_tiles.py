@@ -38,13 +38,13 @@ def group_elements_and_download_tiles(
     grouped = group_elements_by_tile(elements, zoom)
 
     download_tile_inputs = []
-    annotation_names = []
+    tile_annotations = []
     for (tile_col, tile_row), group in grouped.items():
         output_name = f"{zoom}_{tile_col}_{tile_row}"
         download_tile_inputs.append(
             (zoom, tile_col, tile_row, mapbox_token, f"{output_path / output_name}.jpg")
         )
-        annotation_names.append(f"{output_path / output_name}.json")
+        tile_annotations.append((f"{output_path / output_name}.json", group))
 
     logger.info(f"Downloading tiles to {output_path}")
     with ThreadPoolExecutor() as executor:
@@ -55,8 +55,8 @@ def group_elements_and_download_tiles(
             future.result()
 
     logger.info(f"Saving annotations to {output_path}")
-    for annotation_name in annotation_names:
-        Path(annotation_name).write_text(
+    for annotation_path, group in tile_annotations:
+        Path(annotation_path).write_text(
             json.dumps(
                 {
                     "elements": group,
