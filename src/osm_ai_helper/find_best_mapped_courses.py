@@ -79,6 +79,7 @@ def find_best_mapped_courses(
     region: str = "United Kingdom",
     n_train: int = 8,
     n_val: int = 2,
+    skip_course_ids: List[int] | None = None,
 ) -> Tuple[Path, Path, Path]:
     """Find the top-N best-mapped golf courses in a region by tagged bunker count.
 
@@ -87,6 +88,10 @@ def find_best_mapped_courses(
     centroid, ranks courses by bunker count, and writes train/val bunker element
     files in the same shape as `download_osm` (so the rest of the pipeline works
     unchanged).
+
+    Use `skip_course_ids` to exclude specific courses from the ranking — for
+    example, courses whose bunker mapping style is too distinct from the rest
+    (huge dune-style bunkers vs. small pot bunkers) and would skew validation.
 
     Args:
         output_dir (str): Directory to write the output files.
@@ -149,10 +154,18 @@ def find_best_mapped_courses(
         f"{unassigned} bunkers fell outside any course polygon (ignored)"
     )
 
+    skip_set = set(skip_course_ids or [])
     ranked_idxs = sorted(
         range(len(course_polys)),
         key=lambda i: -len(bunkers_per_course[i]),
     )
+    if skip_set:
+        excluded = [i for i in ranked_idxs if course_polys[i][0]["id"] in skip_set]
+        for i in excluded:
+            course = course_polys[i][0]
+            name = (course.get("tags") or {}).get("name") or "(unnamed)"
+            logger.info(f"Excluding course {name} ({course['type']}/{course['id']}) per skip_course_ids")
+        ranked_idxs = [i for i in ranked_idxs if course_polys[i][0]["id"] not in skip_set]
     top = ranked_idxs[: n_train + n_val]
 
     summary = []
