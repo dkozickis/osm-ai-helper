@@ -5,6 +5,7 @@ from typing import Dict, List
 from fire import Fire
 from loguru import logger
 from shapely.geometry import box, Polygon
+from tqdm.auto import tqdm
 
 from osm_ai_helper.utils.coordinates import (
     TILE_SIZE,
@@ -64,8 +65,10 @@ def convert_to_yolo_dataset(
             The annotations are expected to be in the format `zoom_tile_col_tile_row.json`.
     """
     input_path = Path(input_dir)
+    image_paths = list(input_path.glob("**/*.jpg"))
+    logger.info(f"Converting {len(image_paths)} tiles in {input_path} to YOLO labels")
 
-    for image_path in input_path.glob("**/*.jpg"):
+    for image_path in tqdm(image_paths, desc="Converting to YOLO", unit="tile"):
         annotation_path = image_path.with_suffix(".json")
         annotation = json.loads(annotation_path.read_text())
         zoom, tile_col, tile_row = map(int, image_path.stem.split("_"))

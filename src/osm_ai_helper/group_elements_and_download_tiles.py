@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fire import Fire
 from loguru import logger
+from tqdm.auto import tqdm
 
 from osm_ai_helper.utils.tiles import download_tile, group_elements_by_tile
 
@@ -46,16 +47,23 @@ def group_elements_and_download_tiles(
         )
         tile_annotations.append((f"{output_path / output_name}.json", group))
 
-    logger.info(f"Downloading tiles to {output_path}")
+    logger.info(f"Downloading {len(download_tile_inputs)} tiles to {output_path}")
     with ThreadPoolExecutor() as executor:
         futures = [
             executor.submit(download_tile, *inputs) for inputs in download_tile_inputs
         ]
-        for future in as_completed(futures):
+        for future in tqdm(
+            as_completed(futures),
+            total=len(futures),
+            desc="Downloading tiles",
+            unit="tile",
+        ):
             future.result()
 
     logger.info(f"Saving annotations to {output_path}")
-    for annotation_path, group in tile_annotations:
+    for annotation_path, group in tqdm(
+        tile_annotations, desc="Saving annotations", unit="ann"
+    ):
         Path(annotation_path).write_text(
             json.dumps(
                 {
